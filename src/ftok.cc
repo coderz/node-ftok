@@ -19,6 +19,7 @@ struct write_req {
   int k;
   Persistent<Function> cbl;
   uv_work_t req;
+  char *error;
 };
 
 void ftok_async(uv_work_t *req) {
@@ -27,13 +28,16 @@ void ftok_async(uv_work_t *req) {
   key_t k = ftok(path, original_req->id);
 
   original_req->k = k;
+
+  if (original_req->k < 0)
+    original_req->error = strerror(errno);
 }
 
 void after_ftok_async(uv_work_t *req) {
   struct write_req *original_req = (struct write_req *) req->data;
   Handle<Value> err = 
     (original_req->k < 0) ?
-      String::New(strerror(errno)) :
+      String::New(original_req->error) :
       Null();
 
   Handle<Value> argv[] = { err, Number::New((int) original_req->k) };
